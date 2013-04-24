@@ -1,4 +1,3 @@
-(load "chez-init.ss")
 
 (define-datatype expression expression? 
   (var-exp
