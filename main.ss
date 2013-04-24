@@ -4,7 +4,7 @@
 (load "parser.ss")
 (load "interpreter.ss")
 
-(define (rl) (load "C:/Users/spurrme/Documents/Junior/CSSE304/main.ss"))
+(define (rl) (load "main.ss"))
 
 (define (rep)
   (begin

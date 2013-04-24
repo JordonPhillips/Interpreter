@@ -38,12 +38,30 @@
 											[(eval-expression (caar ls) env) (eval-expression (cadar ls) env)]
 											[else (helper (cdr ls))] ))])
 					(helper body))]
-		[let-exp (vars vals exprs)]
+		[let-exp (vars vals exprs)
+			(expand-syntax exp)
+		]
 		[let*-exp (vars vals exprs)]
 		[letrec-exp (vars vals exprs)]
 		[set!-exp (vars vals exprs)]
 		)))
-(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr void))
+(define expand-syntax
+  (lambda (expr)
+    (cases expression expr
+	   [let-exp (syms vals bodies)
+		    (app-exp (cons (lambda-exp syms (map expand-syntax bodies))
+				   (map expand-syntax vals)))]
+	   [if-exp (conditional if-true if-false)
+		   (if-exp (expand-syntax conditional)
+			   (expand-syntax if-true)
+			   (expand-syntax if-false))]
+	   [app-exp (exps)
+		    (app-exp (map expand-syntax exps))]
+	   [lambda-exp (ids bodies)
+		       (lambda-exp ids (map expand-syntax bodies))]
+	   [else expr])))		
+		
+(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map void))
 
 	 
 (define make-closure
@@ -149,6 +167,11 @@
       [(cdadr) (cdadr (car args))]
       [(cddar) (cddar (car args))]
       [(cdddr) (cdddr (car args))]
+	  [(append) (apply append args)]
+      [(assq) (apply assq args)]
+	  [(assv) (apply assv args)]
+	  [(apply) (apply (eval (cadr (car args))) (cadr args))]
+	  [(map) args]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-op)])))
@@ -171,3 +194,17 @@
 					(eval-expression body (extend-env (list leftover) (list other) (extend-env parameters defined env))))])]
 		[(list? proc)
 		(map (lambda (e) (apply-proc e args env)) proc)])))
+		
+(define-syntax return-first
+  (syntax-rules ()
+    [(_ e) e]
+    [(_ e1 e2 ...) e1]))
+(define-syntax for
+  (syntax-rules (:)
+       [(_ ( init : test : update) body ...)
+     (begin init
+	    (let loop ()
+	      (if test
+		  (begin body ... update (loop)))))]
+    ))
+    ))
