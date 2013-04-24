@@ -3,8 +3,9 @@
   (lambda (exp)
     (let* ([parse-tree (parse-expression exp)]
 	   [initial-environment global-env]
-	   [result (eval-expression parse-tree initial-environment)])
+	   [result (eval-expression (expand-syntax parse-tree) initial-environment)])
       result)))
+	  
 
 (define eval-expression
   (lambda (exp env)
@@ -38,9 +39,7 @@
 											[(eval-expression (caar ls) env) (eval-expression (cadar ls) env)]
 											[else (helper (cdr ls))] ))])
 					(helper body))]
-		[let-exp (vars vals exprs)
-			(expand-syntax exp)
-		]
+		[let-exp (vars vals exprs)]
 		[let*-exp (vars vals exprs)]
 		[letrec-exp (vars vals exprs)]
 		[set!-exp (vars vals exprs)]
@@ -48,15 +47,15 @@
 (define expand-syntax
   (lambda (expr)
     (cases expression expr
-	   [let-exp (syms vals bodies)
-		    (app-exp (cons (lambda-exp syms (map expand-syntax bodies))
-				   (map expand-syntax vals)))]
+	   [let-exp (vals vars exprs)
+		    (app-exp (lambda-exp vals (map expand-syntax exprs))
+							(map expand-syntax vars))]
 	   [if-exp (conditional if-true if-false)
 		   (if-exp (expand-syntax conditional)
 			   (expand-syntax if-true)
 			   (expand-syntax if-false))]
-	   [app-exp (exps)
-		    (app-exp (map expand-syntax exps))]
+	   [app-exp (rator rand)
+		    (app-exp (expand-syntax rator) (map expand-syntax rand))]
 	   [lambda-exp (ids bodies)
 		       (lambda-exp ids (map expand-syntax bodies))]
 	   [else expr])))		
@@ -136,6 +135,7 @@
       [(<=) (apply <= args)]
       [(>) (apply > args)]
       [(>=) (apply >= args)]
+	  [(car)  (car (car args))]
       [(cdr) (cdr (car args))]
       [(list) (car (list args))]
       [(null?) (null? (car args))]
@@ -171,10 +171,18 @@
       [(assq) (apply assq args)]
 	  [(assv) (apply assv args)]
 	  [(apply) (apply (eval (cadr (car args))) (cadr args))]
-	  [(map) args]
+	  [(map)  ((lambda (proc los) 
+				(letrec 
+				([a (lambda (los)
+					(if (null? los) 
+						'()
+						(cons (apply-prim-proc (cadr proc) (car los)) (a (cdr los)))))])
+						(a los)))
+						(car args) (cadr args))]
+
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
-            prim-op)])))
+            prim-proc)])))
 			
 (define apply-proc
 	(lambda (proc args env)
