@@ -1,4 +1,6 @@
-
+(define scheme-value?
+	(lambda (v)
+		#t))
 (define-datatype expression expression? 
   (var-exp
    (id symbol?))
@@ -48,6 +50,15 @@
 	  (body (list-of expression?)))
 	(or-exp
 	  (body (list-of expression?)))
+	(case-exp
+		(test-val scheme-value?)
+		(bodies list?))
+	(while-exp
+      (test expression?)
+      (bodys (list-of expression?)))
+	(set-exp
+		(var symbol?)
+		(val expression?))
   )
 
 (define parse-expression
@@ -81,12 +92,8 @@
 			   (cadr datum))
 		      (map parse-expression (cddr datum))))]
     [(eqv? (car datum) 'set!)
-	 (if (validApplyingProdcedure? datum)
-	     (let*-exp (map car (cadr datum))
-		      (map (lambda (expr)
-			     (parse-expression (cadr expr)))
-			   (cadr datum))
-		      (map parse-expression (cddr datum))))]   
+	     (set-exp (cadr datum)
+			   (parse-expression (caddr datum)))]   
 	[(eqv? (car datum) 'letrec)
 	 (if (validApplyingProdcedure? datum)
 	     (letrec-exp (map car (cadr datum))
@@ -122,6 +129,20 @@
 		(and-exp (map parse-expression (cdr datum)))]
 	[(eqv? (car datum) 'or)
 		(or-exp (map parse-expression (cdr datum)))]
+	[(eq? (car datum) 'case)
+		(case-exp (cadr datum)
+			(letrec ([helper (lambda (ls)
+				(if (null? (cdr ls))
+					(if (eq? (caar ls) 'else)
+						(list (list (caar ls) (parse-expression (cadar ls))))
+						(list (list (caar ls) (parse-expression (cadar ls)))))
+				(cons (list (caar ls) (parse-expression (cadar ls))) (helper (cdr ls)))))])
+	(helper (cddr datum))))]
+
+
+	[(eqv? (car datum) 'while)
+		(while-exp (parse-expression (cadr datum))
+			  (map parse-expression (cddr datum)))]
 	[else (app-exp
 	       (parse-expression (car datum))
 	       (map parse-expression (cdr datum)))])]
@@ -179,6 +200,7 @@
 ; Validation Functios
 (define validApplyingProdcedure?
   (lambda (expr)
+	(set! a expr)
     (cond
      ; Check to see that we have at least some form of let, assignments, and expressions
      [(< (length expr) 3)

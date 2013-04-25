@@ -57,6 +57,14 @@
 							evaluated-car
 							(helper (cdr ls))))]))])
 					(helper body))]
+		[while-exp (test bodies)
+			(letrec ([helper (lambda ()
+						(if (eval-expression test env)
+							(begin (map (lambda (e) (eval-expression e env)) (reverse bodies)) (helper))))])
+							(helper))]
+		[set-exp (var val)
+			(set! var val)]
+		[case-exp (test bodies)]
 		[cond-exp (body)]
 		[let-exp (vars vals exprs)]
 		[let*-exp (vars vals exprs)]
@@ -95,9 +103,23 @@
 									   (if-exp2 (caar ls) (cadar ls))
 									   (if-exp (caar ls) (cadar ls) (helper (cdr ls)))))])
 								(helper body))]
+		[case-exp (test-value cases)
+			(letrec ([helper (lambda (ls)
+							(if (null? (cdr ls))
+								(if (and (not (null? (car ls))) (eq? (caar ls) 'else))
+									(if-exp2 (app-exp (var-exp 'else) '()) (cadar ls))
+									(if-exp2 (app-exp (var-exp 'member) (list (lit-exp test-value) (lit-exp (caar ls))))
+									(cadar ls)))
+							(if-exp (app-exp (var-exp 'member) (list (lit-exp test-value) (lit-exp (caar ls))))
+							(cadar ls)
+							(helper (cdr ls)))))])
+			(helper cases))]
+		[while-exp (test-value bodies)
+			(while-exp (expand-syntax test-value) (map expand-syntax bodies))]
+
 	   [else expr])))		
 		
-(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map void))
+(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member void))
 
 	 
 (define make-closure
@@ -153,7 +175,7 @@
   (lambda (prim-proc args)
     (case prim-proc
       [(void) (void)]
-	  [(else) (#t)]
+	  [(else) #t]
       [(set-car!) (set-car! (car args) (cadr args))]
       [(set-cdr!) (apply set-cdr! args)]
       [(+) (apply + args)]
@@ -205,6 +227,7 @@
       [(cddar) (cddar (car args))]
       [(cdddr) (cdddr (car args))]
 	  [(append) (apply append args)]
+	  [(member) (member (car args) (cadr args))]
       [(assq) (apply assq args)]
 	  [(assv) (apply assv args)]
 	  [(apply) (apply (eval (cadr (car args))) (cadr args))]
