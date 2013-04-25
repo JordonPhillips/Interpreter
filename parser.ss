@@ -68,7 +68,7 @@
      [(or (null? datum) (number? datum) (string? datum) (vector? datum) (boolean? datum) (null? datum)) (lit-exp datum)]
      [(pair? datum)
        (cond
-	[(not (validList? datum))
+	[(not (list? datum))
 	 (eopl:error  'parse-expression "Invalid list structure in ~s" datum)]
 
 	[(eqv? (car datum) 'quote)
@@ -178,6 +178,9 @@
       [if-exp (test-exp true-exp false-exp)
 	      (cons 'if
 		    (map unparse-expression (list test-exp true-exp false-exp)))]
+	  [if-exp2 (test-exp true-exp)
+		(cons 'if (map unparse-expression (list test-exp true-exp)))]
+		
       [let-exp (vars vals exprs)
 	       (cons 'let  (unparse-applying-exp vars vals exprs))]
       [let*-exp (vars vals exprs)
@@ -188,7 +191,13 @@
 	       (cons 'set!  (unparse-applying-exp vars vals exprs))]
 	  [begin-exp (exps)
 			(cons 'begin (map unparse-expression exps))]
-      )))
+	  [cond-exp  (body)
+		(cons 'cond (map unparse-expression exps))]
+	  [and-exp(body)]
+	  [or-exp(body)]
+	[case-exp(test-val bodies)]
+	[while-exp(test bodys )]
+	[set-exp(var val)])))
 
 (define unparse-applying-exp
   (lambda (vars vals exprs)
@@ -206,10 +215,10 @@
      [(< (length expr) 3)
       (eopl:error  'parse-expression "Incorrect length in ~s" expr)]
      ; Check that the argument list is a valid list
-     [(not (validList? (cadr expr)))
+     [(not (list? (cadr expr)))
       (eopl:error  'parse-expression "Bad assignment list in ~s" expr)]
      ; Check that each assignment is a valid list
-     [(not (andmap validList? (cadr expr)))
+     [(not (andmap list? (cadr expr)))
       (eopl:error  'parse-expression "Bad assignment in list ~s" expr)]
      ; Check that each assignment is a valid list
      [(not (andmap (lambda (assignment)
@@ -244,13 +253,6 @@
      [else #t])))
 
 ; Helper Functions
-(define validList?
-  (lambda (lst)
-    (cond
-     [(null? lst) #t]
-     [(pair? lst) (validList? (cdr lst))]
-     [else #f])))
-
 (define set?
   (lambda (l)
     (if (null? l)
