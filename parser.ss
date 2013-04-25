@@ -6,11 +6,11 @@
    (id symbol?)
    (body (list-of expression?)))
   (lambda-exp
-   (id (list-of symbol?))
-   (body (list-of expression?)))
+   (id list?)
+   (body list?))
   (app-exp
    (rator expression?)
-   (rand (list-of expression?)))
+   (rand list?))
   (lit-exp
    (datum (lambda (x)
 	    (or (number? x) (string? x) (pair? x) (vector? x) (boolean? x) (symbol? x) (null? x)))))
@@ -44,6 +44,10 @@
 	(body (list-of expression?)))
 	(cond-exp
 	 (body (list-of list?)))
+	(and-exp
+	  (body (list-of expression?)))
+	(or-exp
+	  (body (list-of expression?)))
   )
 
 (define parse-expression
@@ -114,6 +118,10 @@
 		 (dotted-lambda-exp (cadr datum) (map parse-expression (cddr datum)))]))]
 	[(eqv? (car datum) 'begin)
 		(begin-exp (map parse-expression (cdr datum)))]
+	[(eqv? (car datum) 'and)
+		(and-exp (map parse-expression (cdr datum)))]
+	[(eqv? (car datum) 'or)
+		(or-exp (map parse-expression (cdr datum)))]
 	[else (app-exp
 	       (parse-expression (car datum))
 	       (map parse-expression (cdr datum)))])]

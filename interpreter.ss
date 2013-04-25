@@ -13,7 +13,13 @@
 	   [var-exp (id) (apply-env env id)]
 	   [lit-exp (val) val]
 	   [lambda-exp (id body)
-		       (car (map (lambda (e) (make-closure id e env)) (reverse body)))]
+		       (letrec ([helper (lambda (ls)
+							(cond
+								[(null? (cdr ls))
+									(list (make-closure id (car ls) env))]
+								[else
+									(cons (make-closure id (car ls) env) (helper (cdr ls)))]))])
+						(helper body))]
 	   [app-exp (operator operand)
 		    (let ([procedure (eval-expression operator env)]
 			  [arg (map (lambda (e) (eval-expression e env)) operand)])
@@ -32,13 +38,26 @@
 			   [params (car t)]
 			   [left (caadr t)])
 			   (car (map (lambda (e) (make-dotted-closure params left e env)) (reverse body))))]
-		[cond-exp (body)
+		
+		[and-exp (body)
 			(letrec ([helper (lambda (ls)
-											(cond 
-											[(null? ls) (set! ls '())]
-											[(eval-expression (caar ls) env) (eval-expression (cadar ls) env)]
-											[else (helper (cdr ls))] ))])
+				(cond
+					[(null? ls) #t]
+					[(null? (cdr ls)) (eval-expression (car ls) env)]
+					[(eval-expression (car ls) env) (helper (cdr ls))]
+					[else #f]))])
 					(helper body))]
+		[or-exp (body)
+			(letrec ([helper (lambda (ls)
+				(cond
+					[(null? ls) #f]
+					[(null? (cdr ls)) (eval-expression (car ls) env)]
+					[else (let ([evaluated-car (eval-expression (car ls) env)])
+						(if evaluated-car
+							evaluated-car
+							(helper (cdr ls))))]))])
+					(helper body))]
+		[cond-exp (body)]
 		[let-exp (vars vals exprs)]
 		[let*-exp (vars vals exprs)]
 		[letrec-exp (vars vals exprs)]
@@ -50,6 +69,14 @@
 	   [let-exp (vals vars exprs)
 		    (app-exp (lambda-exp vals (map expand-syntax exprs))
 							(map expand-syntax vars))]
+	   [let*-exp (vals vars exprs)
+		(letrec ([helper (lambda (var val)
+									(cond
+									   [(null? var) (app-exp (lambda-exp '() (map expand-syntax exprs)) '())]
+									   [(null? (cdr var)) (app-exp (lambda-exp (list (car var)) (map expand-syntax exprs)) (list (expand-syntax (car val))))]
+									   [else (app-exp (lambda-exp (list (car var)) (list (helper (cdr var) (cdr val)))) (list (expand-syntax (car val))))]))])
+								(helper vals vars))]
+			
 	   [if-exp (conditional if-true if-false)
 		   (if-exp (expand-syntax conditional)
 			   (expand-syntax if-true)
@@ -58,6 +85,16 @@
 		    (app-exp (expand-syntax rator) (map expand-syntax rand))]
 	   [lambda-exp (ids bodies)
 		       (lambda-exp ids (map expand-syntax bodies))]
+		[and-exp (body)
+			(and-exp (map expand-syntax body))]
+		[or-exp (body)
+			(or-exp (map expand-syntax body))]
+		[cond-exp (body)
+			(letrec ([helper (lambda (ls)
+									(if (null? (cdr ls))
+									   (if-exp2 (caar ls) (cadar ls))
+									   (if-exp (caar ls) (cadar ls) (helper (cdr ls)))))])
+								(helper body))]
 	   [else expr])))		
 		
 (define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map void))
@@ -117,7 +154,7 @@
     (case prim-proc
       [(void) (void)]
 	  [(else) (#t)]
-      [(set-car!) (apply set-car! args)]
+      [(set-car!) (set-car! (car args) (cadr args))]
       [(set-cdr!) (apply set-cdr! args)]
       [(+) (apply + args)]
       [(-) (apply - args)]
@@ -201,7 +238,10 @@
 						   [other (cadr parsed-args)])
 					(eval-expression body (extend-env (list leftover) (list other) (extend-env parameters defined env))))])]
 		[(list? proc)
-		(map (lambda (e) (apply-proc e args env)) proc)])))
+		(letrec ([helper (lambda (ls)
+			(if (null? (cdr ls))
+					(apply-proc (car ls) args env)
+					(begin (apply-proc (car ls) args env) (helper (cdr ls)))))]) (helper proc))])))
 		
 (define-syntax return-first
   (syntax-rules ()
