@@ -148,6 +148,8 @@
 					(if (eq? (car t) #t)
 						(cons (list (car ls)) (list (cdr t)))
 						(cons (cons (car ls) (car t)) (cdr t)))))))
+						
+
 (define-datatype procedure procedure?
   [closure
    (id (list-of symbol?))
@@ -172,7 +174,8 @@
           *prim-proc-names*)
      (empty-env)))
 (define apply-prim-proc
-  (lambda (prim-proc args)
+  (lambda (prim-proc args env)
+	(set! aab prim-proc)
     (case prim-proc
       [(void) (void)]
 	  [(else) #t]
@@ -230,15 +233,15 @@
 	  [(member) (member (car args) (cadr args))]
       [(assq) (apply assq args)]
 	  [(assv) (apply assv args)]
-	  [(apply) (apply (eval (cadr (car args))) (cadr args))]
-	  [(map)  ((lambda (proc los) 
-				(letrec 
-				([a (lambda (los)
-					(if (null? los) 
-						'()
-						(cons (apply-prim-proc (cadr proc) (car los)) (a (cdr los)))))])
-						(a los)))
-						(car args) (cadr args))]
+	  [(apply) (apply-proc (car args) (cadr args) env)]
+	  [(map)  (letrec 
+				([helper (lambda (proc args)
+				(cond
+				[(pair? args)
+					(cons (apply-proc proc (list (car args)) env) (helper proc (cdr args)))]
+				[(null? args) '()]
+				[else (eopl:error  'parse-expression "Not a proper list: ~s" args)]))])
+				(helper (car args) (cadr args)))]
 
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
@@ -252,7 +255,7 @@
 				[closure (parameters body env)
 					(eval-expression body (extend-env parameters args env))]
 				[primitive (id)
-					(apply-prim-proc id args)]
+					(apply-prim-proc id args env)]
 				[informal-closure (id body env)
 					(eval-expression body (extend-env (list id) (list args) env))]
 				[dotted-closure (parameters leftover body env)
@@ -268,8 +271,8 @@
 		
 (define-syntax return-first
   (syntax-rules ()
-    [(_ e) e]
-    [(_ e1 e2 ...) e1]))
+	[(_ e) e]
+    [(_ e1 e2 ...) (let ([a e1]) (begin e2 ...) a)]))
 (define-syntax for
   (syntax-rules (:)
        [(_ ( init : test : update) body ...)
