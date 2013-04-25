@@ -23,11 +23,38 @@
 ; <expression> ::=		<constant>
 ;             | 	<variable>
 ;             |	   (quote <datum>)
-;             |	   (lambda <formals> <expression> <expression>*)
+;             |	   (lambda <list> <list>)
+;			  |    (informal-lambda <symbol> <expressions>)
+;			  |    (application <expression> <list>)
+;			  |    (lit <constant>)
 ;             |	   (if <expression> <expression> <expression>)
+;			  |    (if2  <expression> <expression>)
 ;             |	   (set! <variable> <expression>)
-;             |	   <application>
-; <constant> ::=	<boolean> | <number> | <character> | <string>
+;			  |    (let <symbols> <expressions> <expressions>)
+;			  |    (let* <symbols> <expressions> <expressions>)
+;			  |    (letrec <symbols> <expressions> <expressions>)
+;			  |    (set! <symbols> <expressions> <expressions>)
+;			  |    (begin <expressions>)
+;			  |    (dotted--lambda <pair> <expressions>)
+;			  |    (cond <lists>)
+;			  |    (and <expressions>)
+;			  |    (or <expressions>)
+;			  |    (case <constant> <lists>)
+;			  |    (while <expression> <expressions>)
+;			  |    (set <symbol> <expression>)
+
+
+
+
+
+
+
+
+
+
+
+  
+; <constant> ::=	<number> | <string> | <pair> | <vector> | <boolean> | <symbol> | <null>
 ; <formals>	::=	<variable>
 ;               |	  (<variable>*)
 ;               |	  (<variable> <variable>* . <variable>)
