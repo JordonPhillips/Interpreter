@@ -42,17 +42,6 @@
 ;			  |    (case <constant> <lists>)
 ;			  |    (while <expression> <expressions>)
 ;			  |    (set <symbol> <expression>)
-
-
-
-
-
-
-
-
-
-
-
   
 ; <constant> ::=	<number> | <string> | <pair> | <vector> | <boolean> | <symbol> | <null>
 ; <formals>	::=	<variable>
