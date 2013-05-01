@@ -71,6 +71,7 @@
 		[letrec-exp (vars vals exprs)]
 		[set!-exp (vars vals exprs)]
 		)))
+
 (define expand-syntax
   (lambda (expr)
     (cases expression expr
@@ -119,7 +120,11 @@
 
 	   [else expr])))		
 		
-(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member void))
+(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal?
+							atom? length list->vector list? pair? procedure? vector->list vector make-vector
+							vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar
+							caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member
+							max void))
 
 	 
 (define make-closure
@@ -152,19 +157,19 @@
 
 (define-datatype procedure procedure?
   [closure
-   (id (list-of symbol?))
-   (body expression?)
-   (env list?)]
-   [informal-closure
+   	(id (list-of symbol?))
+   	(body expression?)
+  	(env list?)]
+  [informal-closure
 	(id symbol?)
 	(body expression?)
 	(env list?)]
-	[dotted-closure
-	 (parameters list?)
-	 (leftover symbol?)
-	 (body expression?)
-	 (env list?)]
-   [primitive 
+  [dotted-closure
+	(parameters list?)
+	(leftover symbol?)
+	(body expression?)
+	(env list?)]
+  [primitive 
 	(id symbol?)])
 	
 (define global-env
@@ -173,6 +178,7 @@
      (map primitive    
           *prim-proc-names*)
      (empty-env)))
+
 (define apply-prim-proc
   (lambda (prim-proc args env)
 	(set! aab prim-proc)
@@ -242,6 +248,7 @@
 				[(null? args) '()]
 				[else (eopl:error  'parse-expression "Not a proper list: ~s" args)]))])
 				(helper (car args) (cadr args)))]
+	  [(max) (max (car args) (cadr args))]
 
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
@@ -273,6 +280,7 @@
   (syntax-rules ()
 	[(_ e) e]
     [(_ e1 e2 ...) (let ([a e1]) (begin e2 ...) a)]))
+
 (define-syntax for
   (syntax-rules (:)
        [(_ ( init : test : update) body ...)

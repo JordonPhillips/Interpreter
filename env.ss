@@ -14,7 +14,7 @@
 (define apply-env
   (lambda (env sym)
     (if (null? env)
-	(eopl:error 'apply-env "No binding for ~s" sym)
+		(eopl:error 'apply-env "No binding for ~s" sym)
 	(let ([syms (car (car env))]
 	      [vals (cdr (car env))]
 	      [env (cdr env)])

@@ -110,6 +110,7 @@
 ; <vector-set!> ::= (vector-set! <vector> <expression>)
 ; <c**r> ::= (c**r <list>)
 ; <c***r> ::= (c***r <list>)
+; <max> :: (max <number> <number>)
 
 
 
