@@ -14,7 +14,7 @@
 (define apply-env
   (lambda (env sym)
     (if (null? env)
-	(eopl:error 'apply-env "No binding for ~s" sym)
+		(apply-global-env sym)
 	(let ([syms (car (car env))]
 	      [vals (cdr (car env))]
 	      [env (cdr env)])
@@ -31,3 +31,89 @@
 		  (if (number? index)
 		      (+ index 1)
 		      #f))])))
+			  
+(define change-env
+  (lambda (env sym val)
+    (if (null? env)
+		(change-global-env sym val)
+	(let ([syms (caar env)]
+	      [vals (cdar env)]
+	      [env (cdr env)])
+	  (let ((pos (find-position sym syms)))
+	    (if (number? pos)
+		(vector-set! vals pos val)
+		(change-env env sym val)))))))
+		
+
+(define extend-global-env
+	(lambda (sym val)
+		(letrec ([helper (lambda (env)
+						(cond 
+						[(null? env) #f]
+						[(eqv? (caar env) sym) (set-cdr! (car env) (list val)) #t]
+						[else (helper (cdr env))]))])
+			(if (not (helper global-env))
+				(set! global-env (cons (cons sym (list val)) global-env))))))
+
+(define apply-global-env
+	(lambda (sym)
+		(letrec ([helper (lambda (ls)
+						(cond 
+						[(null? ls) #f]
+						[(eqv? sym (caar ls)) (cadar ls)]
+						[else (helper (cdr ls))]))])
+			(let ([return-value (helper global-env)])
+				(if return-value
+					return-value
+					(eopl:error 'apply-env "No-binding for ~s" sym))))))
+(define change-global-env
+	(lambda (sym val)
+		(letrec ([helper (lambda (env)
+						(cond 
+						[(null? env) #f]
+						[(eqv? (caar env) sym) (set-cdr! (car env) (list val)) #t]
+						[else (helper (cdr env))]))])
+			(let ([return-value (helper global-env)])
+				(if (not return-value)
+					(eopl:error 'apply-env "No-binding for ~s" sym))))))
+
+(define define-env
+	(lambda (e env sym val)
+		(if (null? env)
+			(begin (set! e (cons (cons (list sym) (list->vector (list val))) e)) e)
+			(let ([syms (caar env)]
+				  [vals (cdar env)]
+				  [env (cdr env)])
+				(let ((pos (find-position sym syms)))
+					(if (number? pos)
+						(vector-set! vals pos val)
+						(define-env e env sym val)))))))
+
+(define extend-env-recur
+  (lambda (syms vals env)
+    (let* ([vec (list->vector vals)]
+	   [new-env (cons (cons syms vec) env)])
+      (for-each (lambda (item pos)
+		  (if (proc? item)
+		      (vector-set! vec
+				   pos
+				   (cases proc item
+					  [closure (ids bodies toss-env)
+						   (closure ids bodies new-env)]
+					  [primitive (id)
+						     item]))))
+		vals
+		(make-indices (- (length vals) 1) '()))
+      new-env)))
+	  
+(define make-indices
+  (lambda (n accu)
+    (if (= n 0)
+	(cons 0 accu)
+	(make-indices (- n 1) (cons n accu)))))
+					
+					
+
+
+								
+

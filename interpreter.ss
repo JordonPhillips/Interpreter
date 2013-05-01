@@ -1,9 +1,16 @@
+(define top-level-eval
+  (lambda (form)
+    (cases expression form
+	   [define-exp (sym val)
+	     (extend-global-env sym (eval-expression val (empty-env)))]
+	   [else (eval-expression form (empty-env))])))
+
 
 (define eval-one-exp
   (lambda (exp)
-    (let* ([parse-tree (parse-expression exp)]
-	   [initial-environment global-env]
-	   [result (eval-expression (expand-syntax parse-tree) initial-environment)])
+    (let* ([parse-tree (expand-syntax (parse-expression exp))]
+	   [initial-environment empty-env]
+	   [result (top-level-eval  parse-tree)])
       result)))
 	  
 
@@ -31,7 +38,12 @@
 		[if-exp2 (test-exp true-exp)
 			(if (eval-expression test-exp env)
 				(eval-expression true-exp env))] 
-		[begin-exp (exps) (car (map (lambda (e) (eval-expression e env)) (reverse exps)))]		
+		[begin-exp (exps) (car (map (lambda (e) 
+											(let ([result (eval-expression e env)])
+													(if (and (pair? result) (eq? (car result) 'special-symbol))
+														(set! env (cadr result))
+														result)))
+													(reverse exps)))]		
 		[informal-lambda-exp (id body) (car (map (lambda (e) (make-informal-closure id e env)) (reverse body)))]
 		[dotted-lambda-exp (id body) 
 		(let* ([t (parse-parms id)]
@@ -63,12 +75,14 @@
 							(begin (map (lambda (e) (eval-expression e env)) (reverse bodies)) (helper))))])
 							(helper))]
 		[set-exp (var val)
-			(set! var val)]
+			(change-env env var (eval-expression val env)) (list 'special-symbol env)]
+		[define-exp (symbol expression)
+			 (list 'special-symbol (define-env env env symbol (eval-expression expression env)))]
+		[letrec-exp (vars vals exprs)]
 		[case-exp (test bodies)]
 		[cond-exp (body)]
 		[let-exp (vars vals exprs)]
 		[let*-exp (vars vals exprs)]
-		[letrec-exp (vars vals exprs)]
 		[set!-exp (vars vals exprs)]
 		)))
 (define expand-syntax
@@ -116,10 +130,11 @@
 			(helper cases))]
 		[while-exp (test-value bodies)
 			(while-exp (expand-syntax test-value) (map expand-syntax bodies))]
+		[define-exp (symbol expression)
+			(define-exp symbol (expand-syntax expression))]
 
 	   [else expr])))		
 		
-(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member void))
 
 	 
 (define make-closure
@@ -167,12 +182,7 @@
    [primitive 
 	(id symbol?)])
 	
-(define global-env
-  (extend-env            
-     *prim-proc-names*   
-     (map primitive    
-          *prim-proc-names*)
-     (empty-env)))
+
 (define apply-prim-proc
   (lambda (prim-proc args env)
 	(set! aab prim-proc)
@@ -230,6 +240,7 @@
       [(cddar) (cddar (car args))]
       [(cdddr) (cdddr (car args))]
 	  [(append) (apply append args)]
+	  [(max)  (max (car args))]
 	  [(member) (member (car args) (cadr args))]
       [(assq) (apply assq args)]
 	  [(assv) (apply assv args)]
@@ -248,14 +259,17 @@
             prim-proc)])))
 			
 (define apply-proc
-	(lambda (proc args env)
+	(lambda (proc args env2)
 	(cond 
 		[(procedure? proc)
 			(cases procedure proc
 				[closure (parameters body env)
-					(eval-expression body (extend-env parameters args env))]
+					(eval-expression body
+						(if (null? args)
+							env2
+						(extend-env parameters args env)))]
 				[primitive (id)
-					(apply-prim-proc id args env)]
+					(apply-prim-proc id args env2)]
 				[informal-closure (id body env)
 					(eval-expression body (extend-env (list id) (list args) env))]
 				[dotted-closure (parameters leftover body env)
@@ -264,10 +278,21 @@
 						   [other (cadr parsed-args)])
 					(eval-expression body (extend-env (list leftover) (list other) (extend-env parameters defined env))))])]
 		[(list? proc)
-		(letrec ([helper (lambda (ls)
-			(if (null? (cdr ls))
-					(apply-proc (car ls) args env)
-					(begin (apply-proc (car ls) args env) (helper (cdr ls)))))]) (helper proc))])))
+			(cases procedure (car proc)
+				[closure (parameters body env)
+						(let ([new-env (extend-env parameters args (append env env2))])
+							(letrec ([helper (lambda (ls)
+								(if (null? (cdr ls))
+										(apply-proc (car ls) '() new-env)
+										(begin (let ([result (apply-proc (car ls) '() new-env)])
+													(if (and (pair? result) (eq? (car result) 'special-symbol))
+														(set! new-env (cadr result))
+														result)) (helper (cdr ls)))))]) (helper proc)))]		
+				[else (letrec ([helper (lambda (ls)
+						(if (null? (cdr ls))
+								(apply-proc (car ls) args env)
+								(begin (apply-proc (car ls) args env) (helper (cdr ls)))))]) (helper proc))]
+								)])))
 		
 (define-syntax return-first
   (syntax-rules ()
@@ -281,3 +306,16 @@
 	      (if test
 		  (begin body ... update (loop)))))]
     ))
+	
+(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member max void))
+
+(define global-env
+  (map (lambda (name)
+	 (cons name (list (primitive name))))
+       *prim-proc-names*))
+	   
+(define reset-global-env
+	(lambda ()
+		(set! global-env   (map (lambda (name)
+	 (cons name (list (primitive name))))
+       *prim-proc-names*))))

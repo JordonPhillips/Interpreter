@@ -56,6 +56,9 @@
 	(while-exp
       (test expression?)
       (bodys (list-of expression?)))
+	(define-exp
+		(symbol symbol?)
+		(expression expression?))
 	(set-exp
 		(var symbol?)
 		(val expression?))
@@ -143,6 +146,9 @@
 	[(eqv? (car datum) 'while)
 		(while-exp (parse-expression (cadr datum))
 			  (map parse-expression (cddr datum)))]
+	[(eqv? (car datum) 'define)
+		(define-exp (cadr datum) 
+			(parse-expression (caddr datum)))]
 	[else (app-exp
 	       (parse-expression (car datum))
 	       (map parse-expression (cdr datum)))])]
