@@ -5,7 +5,6 @@
 	     (extend-global-env sym (eval-expression val (empty-env)))]
 	   [else (eval-expression form (empty-env))])))
 
-
 (define eval-one-exp
   (lambda (exp)
     (let* ([parse-tree (expand-syntax (parse-expression exp))]
@@ -38,12 +37,7 @@
 		[if-exp2 (test-exp true-exp)
 			(if (eval-expression test-exp env)
 				(eval-expression true-exp env))] 
-		[begin-exp (exps) (car (map (lambda (e) 
-											(let ([result (eval-expression e env)])
-													(if (and (pair? result) (eq? (car result) 'special-symbol))
-														(set! env (cadr result))
-														result)))
-													(reverse exps)))]		
+		[begin-exp (exps) (begin-eval exps env)]		
 		[informal-lambda-exp (id body) (car (map (lambda (e) (make-informal-closure id e env)) (reverse body)))]
 		[dotted-lambda-exp (id body) 
 		(let* ([t (parse-parms id)]
@@ -78,63 +72,24 @@
 			(change-env env var (eval-expression val env)) (list 'special-symbol env)]
 		[define-exp (symbol expression)
 			 (list 'special-symbol (define-env env env symbol (eval-expression expression env)))]
-		[letrec-exp (vars vals exprs)]
+		[letrec-exp (vars vals exprs)
+			(begin-eval exprs (extend-env-recur vars (map (lambda (e) (eval-expression e env)) vals) env))]
 		[case-exp (test bodies)]
 		[cond-exp (body)]
 		[let-exp (vars vals exprs)]
 		[let*-exp (vars vals exprs)]
 		[set!-exp (vars vals exprs)]
+		[named-let-exp (id vars vals exprs)]
 		)))
-(define expand-syntax
-  (lambda (expr)
-    (cases expression expr
-	   [let-exp (vals vars exprs)
-		    (app-exp (lambda-exp vals (map expand-syntax exprs))
-							(map expand-syntax vars))]
-	   [let*-exp (vals vars exprs)
-		(letrec ([helper (lambda (var val)
-									(cond
-									   [(null? var) (app-exp (lambda-exp '() (map expand-syntax exprs)) '())]
-									   [(null? (cdr var)) (app-exp (lambda-exp (list (car var)) (map expand-syntax exprs)) (list (expand-syntax (car val))))]
-									   [else (app-exp (lambda-exp (list (car var)) (list (helper (cdr var) (cdr val)))) (list (expand-syntax (car val))))]))])
-								(helper vals vars))]
-			
-	   [if-exp (conditional if-true if-false)
-		   (if-exp (expand-syntax conditional)
-			   (expand-syntax if-true)
-			   (expand-syntax if-false))]
-	   [app-exp (rator rand)
-		    (app-exp (expand-syntax rator) (map expand-syntax rand))]
-	   [lambda-exp (ids bodies)
-		       (lambda-exp ids (map expand-syntax bodies))]
-		[and-exp (body)
-			(and-exp (map expand-syntax body))]
-		[or-exp (body)
-			(or-exp (map expand-syntax body))]
-		[cond-exp (body)
-			(letrec ([helper (lambda (ls)
-									(if (null? (cdr ls))
-									   (if-exp2 (caar ls) (cadar ls))
-									   (if-exp (caar ls) (cadar ls) (helper (cdr ls)))))])
-								(helper body))]
-		[case-exp (test-value cases)
-			(letrec ([helper (lambda (ls)
-							(if (null? (cdr ls))
-								(if (and (not (null? (car ls))) (eq? (caar ls) 'else))
-									(if-exp2 (app-exp (var-exp 'else) '()) (cadar ls))
-									(if-exp2 (app-exp (var-exp 'member) (list (lit-exp test-value) (lit-exp (caar ls))))
-									(cadar ls)))
-							(if-exp (app-exp (var-exp 'member) (list (lit-exp test-value) (lit-exp (caar ls))))
-							(cadar ls)
-							(helper (cdr ls)))))])
-			(helper cases))]
-		[while-exp (test-value bodies)
-			(while-exp (expand-syntax test-value) (map expand-syntax bodies))]
-		[define-exp (symbol expression)
-			(define-exp symbol (expand-syntax expression))]
 
-	   [else expr])))		
-		
+(define begin-eval
+	(lambda (exprs env) 
+		(cond 
+			[(null? exprs) '()]
+			[(null? (cdr exprs)) (eval-expression (car exprs) env)]
+			[else (let ([result (eval-expression (car exprs) env)])
+				(if (and (pair? result) (eq? (car result) 'special-symbol)) (set! env (cadr result)))
+					(begin-eval (cdr exprs) env))])))
 
 	 
 (define make-closure
@@ -165,7 +120,7 @@
 						(cons (cons (car ls) (car t)) (cdr t)))))))
 						
 
-(define-datatype procedure procedure?
+(define-datatype procd procd?
   [closure
    (id (list-of symbol?))
    (body expression?)
@@ -182,7 +137,6 @@
    [primitive 
 	(id symbol?)])
 	
-
 (define apply-prim-proc
   (lambda (prim-proc args env)
 	(set! aab prim-proc)
@@ -240,7 +194,7 @@
       [(cddar) (cddar (car args))]
       [(cdddr) (cdddr (car args))]
 	  [(append) (apply append args)]
-	  [(max)  (max (car args))]
+	  [(max)  (apply max args)]
 	  [(member) (member (car args) (cadr args))]
       [(assq) (apply assq args)]
 	  [(assv) (apply assv args)]
@@ -261,8 +215,8 @@
 (define apply-proc
 	(lambda (proc args env2)
 	(cond 
-		[(procedure? proc)
-			(cases procedure proc
+		[(procd? proc)
+			(cases procd proc
 				[closure (parameters body env)
 					(eval-expression body
 						(if (null? args)
@@ -278,7 +232,7 @@
 						   [other (cadr parsed-args)])
 					(eval-expression body (extend-env (list leftover) (list other) (extend-env parameters defined env))))])]
 		[(list? proc)
-			(cases procedure (car proc)
+			(cases procd (car proc)
 				[closure (parameters body env)
 						(let ([new-env (extend-env parameters args (append env env2))])
 							(letrec ([helper (lambda (ls)
@@ -294,28 +248,3 @@
 								(begin (apply-proc (car ls) args env) (helper (cdr ls)))))]) (helper proc))]
 								)])))
 		
-(define-syntax return-first
-  (syntax-rules ()
-	[(_ e) e]
-    [(_ e1 e2 ...) (let ([a e1]) (begin e2 ...) a)]))
-(define-syntax for
-  (syntax-rules (:)
-       [(_ ( init : test : update) body ...)
-     (begin init
-	    (let loop ()
-	      (if test
-		  (begin body ... update (loop)))))]
-    ))
-	
-(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member max void))
-
-(define global-env
-  (map (lambda (name)
-	 (cons name (list (primitive name))))
-       *prim-proc-names*))
-	   
-(define reset-global-env
-	(lambda ()
-		(set! global-env   (map (lambda (name)
-	 (cons name (list (primitive name))))
-       *prim-proc-names*))))

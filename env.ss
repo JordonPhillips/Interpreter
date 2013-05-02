@@ -6,7 +6,17 @@
 (define empty-env
     (lambda ()
           '()))
-
+(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member max void))
+(define global-env
+  (map (lambda (name)
+	 (cons name (list (primitive name))))
+       *prim-proc-names*))
+	   
+(define reset-global-env
+	(lambda ()
+		(set! global-env   (map (lambda (name)
+	 (cons name (list (primitive name))))
+       *prim-proc-names*))))
 (define extend-env
   (lambda (syms vals env)
     (cons (cons syms (list->vector vals)) env)))
@@ -94,14 +104,32 @@
     (let* ([vec (list->vector vals)]
 	   [new-env (cons (cons syms vec) env)])
       (for-each (lambda (item pos)
-		  (if (proc? item)
+		(cond
+		  [(procd? item)
 		      (vector-set! vec
 				   pos
-				   (cases proc item
+				   (cases procd item
 					  [closure (ids bodies toss-env)
 						   (closure ids bodies new-env)]
+					  [informal-closure (id body env)
+							(informal-closure id body new-env)]
+					  [dotted-closure (parms leftover body env)
+							(dotted-closure parms leftover body new-env)]
 					  [primitive (id)
-						     item]))))
+						     item]))]
+			[(list? item)
+				(map (lambda (item) 
+					(vector-set! vec
+					   pos
+					   (cases procd item
+						  [closure (ids bodies toss-env)
+							   (closure ids bodies new-env)]
+						  [informal-closure (id body env)
+								(informal-closure id body new-env)]
+						  [dotted-closure (parms leftover body env)
+								(dotted-closure parms leftover body new-env)]
+						  [primitive (id)
+								 item]))) (reverse item))]))
 		vals
 		(make-indices (- (length vals) 1) '()))
       new-env)))

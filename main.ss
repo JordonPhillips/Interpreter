@@ -1,8 +1,7 @@
 (load "chez-init.ss")
-
-(load "env.ss")
 (load "parser.ss")
 (load "interpreter.ss")
+(load "env.ss")
 
 (define (rl) (load "main.ss"))
 
@@ -13,7 +12,20 @@
     (newline)
     (rep)))
 	
+(define-syntax return-first
+  (syntax-rules ()
+	[(_ e) e]
+    [(_ e1 e2 ...) (let ([a e1]) (begin e2 ...) a)]))
+(define-syntax for
+  (syntax-rules (:)
+       [(_ ( init : test : update) body ...)
+     (begin init
+	    (let loop ()
+	      (if test
+		  (begin body ... update (loop)))))]
+    ))
 	
+
 ;BNF definition
 ;---------------
 ; <program>	::=	<form>*
