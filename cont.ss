@@ -9,7 +9,7 @@
 (define apply-cont
   (lambda (cont val)
     (cases continuation cont
-      [halt-cont () (pretty-print val)]
+      [halt-cont () val]
       [if-cont (if-true-exp if-false-exp env next-cont)
         (if val
             (eval-expression if-true-exp env next-cont)

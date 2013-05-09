@@ -44,6 +44,7 @@
         (if return
           return
           (eopl:error 'apply-env "No binding for ~s" sym))))))
+
 (define find-position
   (lambda (sym ls)
     (cond

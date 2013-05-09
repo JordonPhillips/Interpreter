@@ -1,8 +1,9 @@
 (load "chez-init.ss")
 
+(load "interpreter.ss")
 (load "env.ss")
 (load "parser.ss")
-(load "interpreter.ss")
+
 (load "cont.ss")
 
 (define (rl) (load "main.ss"))
