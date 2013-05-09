@@ -1,7 +1,16 @@
 (load "chez-init.ss")
+<<<<<<< HEAD
 (load "parser.ss")
 (load "interpreter.ss")
 (load "env.ss")
+=======
+
+(load "interpreter.ss")
+(load "env.ss")
+(load "parser.ss")
+
+(load "cont.ss")
+>>>>>>> jordon
 
 (define (rl) (load "main.ss"))
 
@@ -11,6 +20,7 @@
     (write (eval-one-exp (read)))
     (newline)
     (rep)))
+<<<<<<< HEAD
 	
 (define-syntax return-first
   (syntax-rules ()
@@ -26,40 +36,44 @@
     ))
 	
 
+=======
+    
+    
+>>>>>>> jordon
 ;BNF definition
 ;---------------
-; <program>	::=	<form>*
-; <form>		<definition> | <expression>
-; <definition> ::=		<variable definition> | (begin <definition>*)
-; <variable definition>	::=	(define <variable> <expression>)
-; <expression> ::=		<constant>
-;             | 	<variable>
-;             |	   (quote <datum>)
-;             |	   (lambda <list> <list>)
-;			  |    (informal-lambda <symbol> <expressions>)
-;			  |    (application <expression> <list>)
-;			  |    (lit <constant>)
-;             |	   (if <expression> <expression> <expression>)
-;			  |    (if2  <expression> <expression>)
-;             |	   (set! <variable> <expression>)
-;			  |    (let <symbols> <expressions> <expressions>)
-;			  |    (let* <symbols> <expressions> <expressions>)
-;			  |    (letrec <symbols> <expressions> <expressions>)
-;			  |    (set! <symbols> <expressions> <expressions>)
-;			  |    (begin <expressions>)
-;			  |    (dotted--lambda <pair> <expressions>)
-;			  |    (cond <lists>)
-;			  |    (and <expressions>)
-;			  |    (or <expressions>)
-;			  |    (case <constant> <lists>)
-;			  |    (while <expression> <expressions>)
-;			  |    (set <symbol> <expression>)
+; <program> ::= <form>*
+; <form>        <definition> | <expression>
+; <definition> ::=      <variable definition> | (begin <definition>*)
+; <variable definition> ::= (define <variable> <expression>)
+; <expression> ::=      <constant>
+;             |     <variable>
+;             |    (quote <datum>)
+;             |    (lambda <list> <list>)
+;             |    (informal-lambda <symbol> <expressions>)
+;             |    (application <expression> <list>)
+;             |    (lit <constant>)
+;             |    (if <expression> <expression> <expression>)
+;             |    (if2  <expression> <expression>)
+;             |    (set! <variable> <expression>)
+;             |    (let <symbols> <expressions> <expressions>)
+;             |    (let* <symbols> <expressions> <expressions>)
+;             |    (letrec <symbols> <expressions> <expressions>)
+;             |    (set! <symbols> <expressions> <expressions>)
+;             |    (begin <expressions>)
+;             |    (dotted--lambda <pair> <expressions>)
+;             |    (cond <lists>)
+;             |    (and <expressions>)
+;             |    (or <expressions>)
+;             |    (case <constant> <lists>)
+;             |    (while <expression> <expressions>)
+;             |    (set <symbol> <expression>)
   
-; <constant> ::=	<number> | <string> | <pair> | <vector> | <boolean> | <symbol> | <null>
-; <formals>	::=	<variable>
-;               |	  (<variable>*)
-;               |	  (<variable> <variable>* . <variable>)
-; <application>	::=	(<expression> <expression>*)
+; <constant> ::=    <number> | <string> | <pair> | <vector> | <boolean> | <symbol> | <null>
+; <formals> ::= <variable>
+;               |     (<variable>*)
+;               |     (<variable> <variable>* . <variable>)
+; <application> ::= (<expression> <expression>*)
 ; <boolean> ::= #t|#f
 ; <character> ::=    "A" | "B" | "C" | "D" | "E" | "F" | "G"
 ;                        | "H" | "I" | "J" | "K" | "L" | "M" | "N"
@@ -122,6 +136,7 @@
 ; <vector-set!> ::= (vector-set! <vector> <expression>)
 ; <c**r> ::= (c**r <list>)
 ; <c***r> ::= (c***r <list>)
+; <max> :: (max <number> <number>)
 
 
 
