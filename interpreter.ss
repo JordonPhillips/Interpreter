@@ -1,24 +1,22 @@
-
-
 (define eval-one-exp
   (lambda (exp)
     (let* ([parse-tree (parse-expression exp)]
        [initial-environment global-env]
-       [result (eval-expression (expand-syntax parse-tree) initial-environment)])
+       [result (eval-expression (expand-syntax parse-tree) initial-environment (halt-cont))])
       result)))
       
 (define top-level-eval
   (lambda (form)
     (cases expression form
      [define-exp (sym val)
-       (extend-global-env sym (eval-expression val (empty-env)))]
-     [else (eval-expression form (empty-env))])))
+       (extend-global-env sym (eval-expression val (empty-env) (halt-cont)))]
+     [else (eval-expression form (empty-env) (halt-cont))])))
 
 (define eval-expression
-  (lambda (exp env)
+  (lambda (exp env cont)
     (cases expression exp
-       [var-exp (id) (apply-env env id)]
-       [lit-exp (val) val]
+       [var-exp (id) (apply-cont cont (apply-env env id))]
+       [lit-exp (val) (apply-cont cont val)]
        [lambda-exp (id body)
                (letrec ([helper (lambda (ls)
                             (cond
@@ -28,17 +26,15 @@
                                     (cons (make-closure id (car ls) env) (helper (cdr ls)))]))])
                         (helper body))]
        [app-exp (operator operand)
-            (let ([procedure (eval-expression operator env)]
-              [arg (map (lambda (e) (eval-expression e env)) operand)])
+            (let ([procedure (eval-expression operator env cont)]
+              [arg (map (lambda (e) (eval-expression e env cont)) operand)])
               (apply-proc procedure arg env))]
         [if-exp (test-exp true-exp false-exp)
-            (if (eval-expression test-exp env)
-                (eval-expression true-exp env)
-                (eval-expression false-exp env))]
+            (eval-expression test-exp env (if-cont true-exp false-exp cont env))]
         [if-exp2 (test-exp true-exp)
-            (if (eval-expression test-exp env)
-                (eval-expression true-exp env))] 
-        [begin-exp (exps) (car (map (lambda (e) (eval-expression e env)) (reverse exps)))]      
+            (if (eval-expression test-exp env cont)
+                (eval-expression true-exp env cont))] 
+        [begin-exp (exps) (car (map (lambda (e) (eval-expression e env cont)) (reverse exps)))]      
         [informal-lambda-exp (id body) (car (map (lambda (e) (make-informal-closure id e env)) (reverse body)))]
         [dotted-lambda-exp (id body) 
         (let* ([t (parse-parms id)]
@@ -50,24 +46,24 @@
             (letrec ([helper (lambda (ls)
                 (cond
                     [(null? ls) #t]
-                    [(null? (cdr ls)) (eval-expression (car ls) env)]
-                    [(eval-expression (car ls) env) (helper (cdr ls))]
+                    [(null? (cdr ls)) (eval-expression (car ls) env cont)]
+                    [(eval-expression (car ls) env cont) (helper (cdr ls))]
                     [else #f]))])
                     (helper body))]
         [or-exp (body)
             (letrec ([helper (lambda (ls)
                 (cond
                     [(null? ls) #f]
-                    [(null? (cdr ls)) (eval-expression (car ls) env)]
-                    [else (let ([evaluated-car (eval-expression (car ls) env)])
+                    [(null? (cdr ls)) (eval-expression (car ls) env cont)]
+                    [else (let ([evaluated-car (eval-expression (car ls) env cont)])
                         (if evaluated-car
                             evaluated-car
                             (helper (cdr ls))))]))])
                     (helper body))]
         [while-exp (test bodies)
             (letrec ([helper (lambda ()
-                        (if (eval-expression test env)
-                            (begin (map (lambda (e) (eval-expression e env)) (reverse bodies)) (helper))))])
+                        (if (eval-expression test env cont)
+                            (begin (map (lambda (e) (eval-expression e env cont)) (reverse bodies)) (helper))))])
                             (helper))]
         [set-exp (var val)
             (set! var val)]
@@ -257,16 +253,16 @@
         [(procedure? proc)
             (cases procedure proc
                 [closure (parameters body env)
-                    (eval-expression body (extend-env parameters args env))]
+                    (eval-expression body (extend-env parameters args env) (halt-cont))]
                 [primitive (id)
                     (apply-prim-proc id args env)]
                 [informal-closure (id body env)
-                    (eval-expression body (extend-env (list id) (list args) env))]
+                    (eval-expression body (extend-env (list id) (list args) env) (halt-cont))]
                 [dotted-closure (parameters leftover body env)
                     (let* ([parsed-args (parse-args (length parameters) args)]
                            [defined (car parsed-args)]
                            [other (cadr parsed-args)])
-                    (eval-expression body (extend-env (list leftover) (list other) (extend-env parameters defined env))))])]
+                    (eval-expression body (extend-env (list leftover) (list other) (extend-env parameters defined env)) (halt-cont)))])]
         [(list? proc)
         (letrec ([helper (lambda (ls)
             (if (null? (cdr ls))
@@ -286,5 +282,3 @@
           (if test
           (begin body ... update (loop)))))]
     ))
-
-

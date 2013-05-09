@@ -1,4 +1,3 @@
-
 ;;; Rib cage implementation using:
 ;;; A list of symbols and
 ;;; A vector of values
@@ -55,6 +54,12 @@
               (+ index 1)
               #f))])))
 
+(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal?
+                            atom? length list->vector list? pair? procedure? vector->list vector make-vector
+                            vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar
+                            caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member
+                            max void))
+
 (define global-env
   (map (lambda (name)
    (cons name (primitive name)))
@@ -66,11 +71,7 @@
                      (cons name (primitive name)))
                          *prim-proc-names*))))
 
-(define *prim-proc-names* '(else car + - * add1 sub1 cons = / zero? not and < <= > >= cdr list null? eq? equal?
-                            atom? length list->vector list? pair? procedure? vector->list vector make-vector
-                            vector-ref vector? number? symbol? set-car! set-cdr! vector-set! caar cddr cadr cdar
-                            caaar caadr cadar cdaar caddr cdadr cddar cdddr apply assq assv append map member
-                            max void))
+
 
 (define extend-env-recur
   (lambda (syms vals env)
