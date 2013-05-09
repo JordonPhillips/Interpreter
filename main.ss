@@ -1,16 +1,10 @@
 (load "chez-init.ss")
-<<<<<<< HEAD
-(load "parser.ss")
-(load "interpreter.ss")
-(load "env.ss")
-=======
 
 (load "interpreter.ss")
 (load "env.ss")
 (load "parser.ss")
 
 (load "cont.ss")
->>>>>>> jordon
 
 (define (rl) (load "main.ss"))
 
@@ -20,26 +14,8 @@
     (write (eval-one-exp (read)))
     (newline)
     (rep)))
-<<<<<<< HEAD
-	
-(define-syntax return-first
-  (syntax-rules ()
-	[(_ e) e]
-    [(_ e1 e2 ...) (let ([a e1]) (begin e2 ...) a)]))
-(define-syntax for
-  (syntax-rules (:)
-       [(_ ( init : test : update) body ...)
-     (begin init
-	    (let loop ()
-	      (if test
-		  (begin body ... update (loop)))))]
-    ))
-	
-
-=======
     
     
->>>>>>> jordon
 ;BNF definition
 ;---------------
 ; <program> ::= <form>*
