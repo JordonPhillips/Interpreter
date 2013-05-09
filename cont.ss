@@ -10,7 +10,7 @@
   (lambda (cont val)
     (cases continuation cont
       [halt-cont () val]
-      [if-cont (if-true-exp if-false-exp env next-cont)
+      [if-cont (if-true-exp if-false-exp next-cont env)
         (if val
             (eval-expression if-true-exp env next-cont)
             (eval-expression if-false-exp env next-cont))])))

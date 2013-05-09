@@ -1,5 +1,4 @@
 (set! totalScore 0)
-(load "main.ss")
 
 (define (test-all)
 	(if (begin (set! totalScore 0) (reset-global-env) (and
