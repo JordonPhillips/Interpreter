@@ -6,10 +6,10 @@
    (id symbol?))
   (informal-lambda-exp
    (id symbol?)
-   (body (list-of expression?)))
+   (body expression?))
   (lambda-exp
    (id list?)
-   (body list?))
+   (body expression?))
   (app-exp
    (rator expression?)
    (rand list?))
@@ -39,11 +39,12 @@
    (vars (list-of symbol?))
    (vals (list-of expression?))
    (exprs (list-of expression?)))
-   (begin-exp
+  (begin-exp
   (exps (list-of expression?)))
-   (dotted-lambda-exp
-  (id pair?)
-  (body (list-of expression?)))
+  (dotted-lambda-exp
+	  (id list?)
+	  (sym symbol?)
+	  (body expression?))
   (cond-exp
    (body (list-of list?)))
   (and-exp
@@ -117,12 +118,12 @@
    (if (validLambda? datum)
     (cond 
        [(symbol? (cadr datum)) (informal-lambda-exp(cadr datum)
-      (map parse-expression (cddr datum)))]
-     
+      (begin-exp (map parse-expression (cddr datum))))]
      [(list? (cadr datum)) (lambda-exp(cadr datum)
-      (map parse-expression (cddr datum)))]
+      (begin-exp (map parse-expression (cddr datum))))]
      [(pair? (cadr datum))
-     (dotted-lambda-exp (cadr datum) (map parse-expression (cddr datum)))]))]
+	 (let ([t (parse-parms (cadr datum))])
+     (dotted-lambda-exp (car t) (caadr t) (begin-exp (map parse-expression (cddr datum)))))]))]
   [(eqv? (car datum) 'begin)
     (begin-exp (map parse-expression (cdr datum)))]
   [(eqv? (car datum) 'and)
@@ -253,6 +254,14 @@
      [else #t])))
 
 ; Helper Functions
+(define parse-parms
+    (lambda (ls)
+        (if (symbol? ls)
+            ls
+            (let ([t (parse-parms (cdr ls))])
+                (if (symbol? t)
+                    (cons (list (car ls)) (list (list t)))
+                    (cons (cons (car ls) (car t)) (cdr t)))))))
 (define set?
   (lambda (l)
     (if (null? l)

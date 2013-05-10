@@ -4,14 +4,13 @@
 (load "env.ss")
 (load "parser.ss")
 (load "cont.ss")
-(load "11-test.ss")
 
 (define (rl) (load "main.ss"))
 
 (define (rep)
   (begin
     (display "--> ")
-    (write (eval-one-exp (read)))
+    (write (top-level-eval (read)))
     (newline)
     (rep)))
     

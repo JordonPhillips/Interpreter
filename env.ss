@@ -63,7 +63,7 @@
 
 (define global-env
   (map (lambda (name)
-   (cons name (primitive name)))
+   (cons name (list (primitive name))))
        *prim-proc-names*))
 
 (define reset-global-env
