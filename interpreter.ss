@@ -1,8 +1,7 @@
 (define eval-one-exp
   (lambda (exp)
-    (let* ([parse-tree (parse-expression exp)]
-       [initial-environment (empty-env)]
-       [result (eval-expression (expand-syntax parse-tree) initial-environment (halt-cont))])
+    (let* ([parse-tree (expand-syntax (parse-expression exp))]
+       [result (top-level-eval parse-tree)])
       result)))
       
 (define top-level-eval
@@ -36,14 +35,19 @@
                             (begin (map (lambda (e) (eval-expression e env cont)) (reverse bodies)) (helper))))])
                             (helper))]
         [set-exp (var val)
-            (set! var val)]
+		(apply-cont (set-cont env var cont) val)]
+		[letrec-exp (vars vals exprs)
+			;(eval-begin exprs (extend-env-recur vars (map (lambda (e) (eval-expression e env)) vals) env))
+			(apply-cont (letrec-cont vars exprs env cont) vals)]
+		[define-exp (sym body) (begin (set! env (define-env env env sym (eval-expressions val env))) env)]
+		[call/cc-exp (receiver)
+			(eval-expression receiver env (call/cc-cont cont))]
 		[and-exp (body)]
         [or-exp (body)]
         [case-exp (test bodies)]
         [cond-exp (body)]
         [let-exp (vars vals exprs)]
         [let*-exp (vars vals exprs)]
-        [letrec-exp (vars vals exprs)]
         [set!-exp (vars vals exprs)]
         )))
 
@@ -51,14 +55,14 @@
   (lambda (expr)
     (cases expression expr
        [let-exp (vals vars exprs)
-            (app-exp (lambda-exp vals (map expand-syntax exprs))
+            (app-exp (lambda-exp vals (begin-exp (map expand-syntax exprs)))
                             (map expand-syntax vars))]
        [let*-exp (vals vars exprs)
         (letrec ([helper (lambda (var val)
                                     (cond
-                                       [(null? var) (app-exp (lambda-exp '() (map expand-syntax exprs)) '())]
-                                       [(null? (cdr var)) (app-exp (lambda-exp (list (car var)) (map expand-syntax exprs)) (list (expand-syntax (car val))))]
-                                       [else (app-exp (lambda-exp (list (car var)) (list (helper (cdr var) (cdr val)))) (list (expand-syntax (car val))))]))])
+                                       [(null? var) (app-exp (lambda-exp '() (being-exp (map expand-syntax exprs))) '())]
+                                       [(null? (cdr var)) (app-exp (lambda-exp (list (car var)) (begin-exp (map expand-syntax exprs))) (list (expand-syntax (car val))))]
+                                       [else (app-exp (lambda-exp (list (car var)) (begin-exp (list (helper (cdr var) (cdr val))))) (list (expand-syntax (car val))))]))])
                                 (helper vals vars))]
             
        [if-exp (conditional if-true if-false)
@@ -106,8 +110,12 @@
             (helper cases))]
         [while-exp (test-value bodies)
             (while-exp (expand-syntax test-value) (map expand-syntax bodies))]
-		[begin-exp (exps)
-			(begin-exp (map expand-syntax exps))]
+		[begin-exp (exprs)
+			(begin-exp (map expand-syntax exprs))]
+		[letrec-exp (vars vals exprs)
+			(letrec-exp vars (map expand-syntax vals) (map expand-syntax exprs))]
+		[call/cc-exp (reciever)
+			(call/cc-exp (expand-syntax reciever))]
        [else expr])))
      
 (define make-closure
@@ -133,7 +141,7 @@
                         (cons (cons (car ls) (car t)) (cdr t)))))))
                         
 
-(define-datatype procedure procedure?
+(define-datatype procd procd?
   [closure
     (id (list-of symbol?))
     (body expression?)
@@ -147,6 +155,8 @@
     (leftover symbol?)
     (body expression?)
     (env list?)]
+  [acontinuation
+	(cont continuation?)]
   [primitive 
     (id symbol?)])
     
@@ -213,7 +223,7 @@
       [(assv) (apply-cont cont (apply assv args))]
       [(apply) (apply-cont (apply-proc-cont (car args) (cadr args) env cont) '())]
       [(map)  (apply-cont (map-cont (car args) (cdr args) env (remove-first-cont cont)) '())]
-      [(max) (max (car args) (cadr args))]
+      [(max) (apply-cont cont (apply max args))]
 
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
@@ -222,14 +232,16 @@
 (define apply-proc
     (lambda (proc args env cont)
     (cond 
-        [(procedure? proc)
-            (cases procedure proc
+        [(procd? proc)
+            (cases procd proc
                 [closure (parameters body env)
                     (eval-expression body (extend-env parameters args env) cont)]
                 [primitive (id)
                     (apply-prim-proc id args env cont)]
                 [informal-closure (id body env)
                     (eval-expression body (extend-env (list id) (list args) env) cont)]
+				[acontinuation (cont)
+					(apply-cont cont (car args))] 
                 [dotted-closure (parameters leftover body env)
                     (let* ([parsed-args (parse-args (length parameters) args)]
                            [defined (car parsed-args)]

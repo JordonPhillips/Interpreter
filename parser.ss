@@ -60,6 +60,11 @@
   (set-exp
     (var symbol?)
     (val expression?))
+  (define-exp
+	(sym symbol?)
+	(val expression?))
+  (call/cc-exp
+	(reciever expression?))
   )
 
 (define parse-expression
@@ -144,6 +149,8 @@
   [(eqv? (car datum) 'while)
     (while-exp (parse-expression (cadr datum))
         (map parse-expression (cddr datum)))]
+  [(eqv? (car datum) 'call/cc)
+	(call/cc-exp (parse-expression (cadr datum)))]
   [else (app-exp
          (parse-expression (car datum))
          (map parse-expression (cdr datum)))])]
