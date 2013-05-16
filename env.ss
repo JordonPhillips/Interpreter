@@ -89,7 +89,8 @@
 (define define-env
 	(lambda (e env sym val)
 		(if (null? env)
-			(begin (set! e (cons (cons (list sym) (list->vector (list val))) e)) e)
+			;(begin (set! e (cons (cons (list sym) (list->vector (list val))) e)) e)
+			(extend-global-env sym val)
 			(let ([syms (caar env)]
 				  [vals (cdar env)]
 				  [env (cdr env)])
