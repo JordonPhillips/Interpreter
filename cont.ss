@@ -7,6 +7,10 @@
    (cont continuation?))
   (last-element-cont
 	(cont continuation?))
+  (begin-cont
+  	(exps (list-of expression?))
+  	(env list?)
+  	(cont continuation?))
   (eval-exps-cont
    (exps (list-of expression?))
    (env scheme-value?)
@@ -57,7 +61,11 @@
 		(bodies list?)
 		(env list?)
 		(cont continuation?))
-	(def-cont
+	(define-contg
+		(sym symbol?)
+		(env list?)
+		(cont continuation?))
+	(define-contl
 		(sym symbol?)
 		(env list?)
 		(cont continuation?)))
@@ -99,13 +107,18 @@
 			(eval-exps val (letrec2-cont var exprs env cont) env)]
 		[letrec2-cont (vars exprs env cont)
 			(eval-exps exprs (last-element-cont cont) (extend-env-recur vars val env))]
-		[def-cont (sym env cont)
-			(eval-expression (set-exp env (define-env env env sym val)))]
+		[define-contg (sym env cont)
+			(apply-cont cont (change-global-env sym val))]
+		[define-contl (sym env cont)
+			(extend-env (list sym) (list (eval-expression val env cont)) env)]
+		[begin-cont (exps env cont)
+			(eval-begin exps env cont)]
 		[call/cc-cont (cont)
 				(cases procd val
 					[closure (ids body env)
 						(eval-expression body (extend-env ids (list (acontinuation cont)) env) cont)]
 					[else (eopl:error "not valid")])]
+		[else (eopl:error "Invalid Cont")]
 		
 		)))
 

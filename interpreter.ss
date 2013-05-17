@@ -1,3 +1,5 @@
+
+
 (define eval-one-exp
   (lambda (exp)
     (let* ([parse-tree (expand-syntax (parse-expression exp))]
@@ -10,6 +12,12 @@
      [define-exp (sym val)
        (extend-global-env sym (eval-expression val (empty-env) (halt-cont)))]
      [else (eval-expression form (empty-env) (halt-cont))])))
+
+(define eval-begin
+  (lambda (exp env cont)
+    (if (null? (cdr exp))
+        (eval-expression (car exp) env cont)
+        (eval-expression (car exp) env (begin-cont (cdr exp) env cont)))))
 
 (define eval-expression
   (lambda (exp env cont)
@@ -24,21 +32,29 @@
             (eval-expression test-exp env (if-cont true-exp false-exp cont env))]
         [if-exp2 (test-exp true-exp)
            (eval-expression test-exp env (if-cont2 true-exp cont env))] 
-        [begin-exp (exps) (eval-exps exps (last-element-cont cont) env)]      
+        [begin-exp (exps)
+          (eval-begin exps env cont)]      
         [informal-lambda-exp (id body) 
 			(apply-cont cont (make-informal-closure id body env))]
         [dotted-lambda-exp (id sym body) 
 			(apply-cont cont (make-dotted-closure id sym body env))]
         [while-exp (test bodies)
-            (eval-expression test env (if-cont2 (begin-exp (append bodies (list (while-exp test bodies)))) cont env))]
+            (eval-expression test env
+                             (if-cont
+                                (begin-exp (append bodies (list (while-exp test bodies))))
+                                (parse-expression '(+ 3 2))
+                                cont
+                                env))]
         [set-exp (var val)
 		(apply-cont (set-cont env var cont) val)]
 		[letrec-exp (vars vals exprs)
-			;(eval-begin exprs (extend-env-recur vars (map (lambda (e) (eval-expression e env)) vals) env))
 			(apply-cont (letrec-cont vars exprs env cont) vals)]
 		[define-exp (sym body)
-      (apply-cont (def-cont sym env cont) (eval-expression body env cont))]
-
+      (if (null? env)
+          (eval-expression body env (define-contg sym env cont))
+          (apply-cont (define-contl sym env cont) body))]
+      
+      ;(apply-cont (def-cont sym env cont) (eval-expression body env cont))]
     ;(begin (set! env (define-env env env sym (eval-expressions val env cont))) env)]
 		[call/cc-exp (receiver)
 			(eval-expression receiver env (call/cc-cont cont))]
@@ -50,6 +66,8 @@
         [let*-exp (vars vals exprs)]
         [set!-exp (vars vals exprs)]
         )))
+
+
 
 (define expand-syntax
   (lambda (expr)
