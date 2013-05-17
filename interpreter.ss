@@ -30,7 +30,7 @@
         [dotted-lambda-exp (id sym body) 
 			(apply-cont cont (make-dotted-closure id sym body env))]
         [while-exp (test bodies)
-            (eval-expression test env (while-cont test bodies env cont))]
+            (eval-expression test env (if-cont2 (begin-exp (append bodies (list (while-exp test bodies)))) cont env))]
         [set-exp (var val)
 		(apply-cont (set-cont env var cont) val)]
 		[letrec-exp (vars vals exprs)
@@ -69,6 +69,8 @@
            (if-exp (expand-syntax conditional)
                (expand-syntax if-true)
                (expand-syntax if-false))]
+       [define-exp (sym val) 
+          (define-exp sym (expand-syntax val))]
        [app-exp (rator rand)
             (app-exp (expand-syntax rator) (map expand-syntax rand))]
        [lambda-exp (ids bodies)
