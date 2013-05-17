@@ -89,7 +89,7 @@
            (parse-expression (cadr expr)))
          (cadr datum))
           (map parse-expression (cddr datum))))]
-  
+  [(eqv? (car datum) 'define) (define-exp (cadr datum) (parse-expression (caddr datum)))]
   [(eqv? (car datum) 'let*)
    (if (validApplyingProdcedure? datum)
        (let*-exp (map car (cadr datum))

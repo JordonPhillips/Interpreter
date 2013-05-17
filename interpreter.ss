@@ -30,16 +30,16 @@
         [dotted-lambda-exp (id sym body) 
 			(apply-cont cont (make-dotted-closure id sym body env))]
         [while-exp (test bodies)
-            (letrec ([helper (lambda ()
-                        (if (eval-expression test env cont)
-                            (begin (map (lambda (e) (eval-expression e env cont)) (reverse bodies)) (helper))))])
-                            (helper))]
+            (eval-expression test env (while-cont test bodies env cont))]
         [set-exp (var val)
 		(apply-cont (set-cont env var cont) val)]
 		[letrec-exp (vars vals exprs)
 			;(eval-begin exprs (extend-env-recur vars (map (lambda (e) (eval-expression e env)) vals) env))
 			(apply-cont (letrec-cont vars exprs env cont) vals)]
-		[define-exp (sym body) (begin (set! env (define-env env env sym (eval-expressions val env))) env)]
+		[define-exp (sym body)
+      (apply-cont (def-cont sym env cont) (eval-expression body env cont))]
+
+    ;(begin (set! env (define-env env env sym (eval-expressions val env cont))) env)]
 		[call/cc-exp (receiver)
 			(eval-expression receiver env (call/cc-cont cont))]
 		[and-exp (body)]
@@ -178,6 +178,7 @@
       [(car) (apply-cont cont (car (car args)))]
       [(=) (apply-cont cont (apply = args))]
       [(/) (apply-cont cont (apply / args))]
+      [(break) (apply-cont (halt-cont) args)]
       [(zero?) (apply-cont cont (zero? (car args)))]
       [(not) (apply-cont cont (not (car args)))]
       [(and) (apply-cont cont (and (car args) (cadr args)))]

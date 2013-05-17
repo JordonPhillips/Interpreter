@@ -52,21 +52,13 @@
 			(cont continuation?))
 	(call/cc-cont
 		(cont continuation?))
-	(define-cont
-		(env list?)
-		(var scheme-value?)
-		(cont continuation?))
-	(define2-cont
-		(env list?)
-		(var scheme-value?)
-		(cont continuation?))
 	(while-cont
 		(test expression?)
 		(bodies list?)
 		(env list?)
 		(cont continuation?))
-	(while-test-cont
-		(test expression?)
+	(def-cont
+		(sym symbol?)
 		(env list?)
 		(cont continuation?)))
 
@@ -99,12 +91,16 @@
 			(last-element val cont)]
 		[set-cont (env var cont)
 			(eval-expression val env (set2-cont env var cont))]
+		[while-cont (test bodies env cont)
+			(if val (map (lambda (e) (eval-expression e env cont)) (reverse bodies)))]
 		[set2-cont (env var cont)
 			(apply-cont cont (change-env env var val))]
 		[letrec-cont (var exprs env cont)
 			(eval-exps val (letrec2-cont var exprs env cont) env)]
 		[letrec2-cont (vars exprs env cont)
 			(eval-exps exprs (last-element-cont cont) (extend-env-recur vars val env))]
+		[def-cont (sym env cont)
+			(eval-expression (set-exp env (define-env env env sym val)))]
 		[call/cc-cont (cont)
 				(cases procd val
 					[closure (ids body env)
